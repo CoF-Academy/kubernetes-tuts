@@ -1,11 +1,10 @@
 const fs = require('fs');
 const { Kafka, logLevel } = require('kafkajs')
-const screencapture = require('screencapture')
 
 
 const kafka = new Kafka({
   clientId: 'camera-producer',
-  brokers: ['bootstrap.dev:443'],
+  brokers: ['bootstrap.devreus:443'],
   logLevel: logLevel.DEBUG,
   ssl: {
     rejectUnauthorized: true,

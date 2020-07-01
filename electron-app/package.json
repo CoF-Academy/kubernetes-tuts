@@ -43,7 +43,11 @@
   },
   "dependencies": {
     "electron-squirrel-startup": "^1.0.0",
-    "kafkajs": "^1.12.0"
+    "jimp": "^0.14.0",
+    "kafkajs": "^1.12.0",
+    "kafkajs-stream": "0.0.12",
+    "rxjs": "^6.5.5",
+    "rxjs-stream": "^3.2.1"
   },
   "devDependencies": {
     "@electron-forge/cli": "^6.0.0-beta.50",
