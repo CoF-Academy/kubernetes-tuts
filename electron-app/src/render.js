@@ -6,13 +6,6 @@ const { dialog, Menu } = remote;
 
 const { Kafka, logLevel } = require('kafkajs')
 
-const { ProducerStream } = require('kafkajs-stream');
-
-const { rxToStream } = require('rxjs-stream');
-
-const Jimp = require('jimp');
-
-
 var loc = window.location.pathname;
 var dir = loc.substring(0, loc.lastIndexOf('/'));
 
@@ -28,27 +21,38 @@ const kafka = new Kafka({
   }
 });
 
-const producerStream = new ProducerStream(kafka, { topic });
+const producer = kafka.producer();
 
 
 // Function to connect to the cluster
-// const run = async () => {
-//   await producer.connect()
-// }
-// const stop = async () => {
-//   await producer.disconnect()
-// }
-// const sendMessage = (msg) => {
-//   return producer
-//     .send({
-//       topic,
-//       messages: [
-//         { value: msg },
-//       ],
-//     })
-//     .then(console.log)
-//     .catch(e => console.error(`[example/producer] ${e.message}`, e))
-// }
+const run = async () => {
+  await producer.connect()
+}
+const stop = async () => {
+  await producer.disconnect()
+}
+
+const blobToBase64 = (blob) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(blob);
+    reader.onloadend = function () {
+      resolve(reader.result);
+    };
+  });
+};
+
+const sendMessage = (msg) => {
+  return producer
+    .send({
+      topic,
+      messages: [
+        { value: JSON.stringify(msg) },
+      ],
+    })
+    .then(console.log)
+    .catch(e => console.error(`[example/producer] ${e.message}`, e))
+}
 
 
 // Global state
@@ -112,7 +116,7 @@ async function selectSource(source) {
     }
   };
 
-
+  run().catch(e => console.error(`[example/producer] ${e.message}`, e))
   // Create a Stream
   const stream = await navigator.mediaDevices
     .getUserMedia(constraints);
@@ -130,9 +134,9 @@ async function selectSource(source) {
   const desktopTrack = stream.getVideoTracks()[0];
   let imageCapture = new ImageCapture(desktopTrack);
 
-  setInterval(() => {
-    captureBitmapFrame(imageCapture)
-  }, 700);
+  // setInterval(() => {
+    captureBitmapFrame(imageCapture);
+  // }, 700);
 
   // Register Event Handlers
   mediaRecorder.ondataavailable = handleDataAvailable;
@@ -167,7 +171,8 @@ function captureBitmapFrame(imageCapture) {
     });
   })
   .then(blob => {
-    console.log(blob);
+    blobToBase64(blob).then( b64 => sendMessage(b64) );
+    // blob.arrayBuffer().then(buffer => sendMessage(buffer));
   })
   .catch(function(error) {
     console.log('grabFrame() error: ', error);
@@ -183,6 +188,8 @@ function handleDataAvailable(e) {
 
 // Saves the video file on stop
 async function handleStop(e) {
+  stop().catch(e => console.error(`[example/producer] ${e.message}`, e))
+
   console.log("Stopped");
   // const blob = new Blob(recordedChunks, {
   //   type: 'video/webm; codecs=vp9'
