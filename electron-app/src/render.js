@@ -134,9 +134,9 @@ async function selectSource(source) {
   const desktopTrack = stream.getVideoTracks()[0];
   let imageCapture = new ImageCapture(desktopTrack);
 
-  // setInterval(() => {
-    captureBitmapFrame(imageCapture);
-  // }, 700);
+  setInterval(() => {
+    captureBitmapFrame(imageCapture)
+  }, 700);
 
   // Register Event Handlers
   mediaRecorder.ondataavailable = handleDataAvailable;
@@ -167,7 +167,7 @@ function captureBitmapFrame(imageCapture) {
         canvas.getContext('2d').drawImage(img,0,0);
       }
       // get it back as a Blob
-      canvas.toBlob(res);
+      canvas.toBlob(res, "image/jpeg", 0.95);
     });
   })
   .then(blob => {

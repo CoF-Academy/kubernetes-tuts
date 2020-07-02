@@ -1,10 +1,13 @@
 import datetime
 from flask import Flask, Response
 from kafka import KafkaConsumer
+import base64
+import time
+
 
 # Fire up the Kafka Consumer
 topic = "my-topic"
-brokers = ["bootstrap.dev:443"]
+brokers = ["bootstrap.devreus:443"]
 
 
 consumer = KafkaConsumer(
@@ -13,6 +16,7 @@ consumer = KafkaConsumer(
     security_protocol='SSL',
     ssl_cafile='root.pem',
     ssl_password='password')
+#  auto_offset_reset='smallest')
 
 
 # Set the consumer in a Flask App
@@ -36,10 +40,18 @@ def get_video_stream():
     Here is where we recieve streamed images from the Kafka Server and convert
     them to a Flask-readable format.
     """
+    #  while True:
+    #      img = base64.b64decode(value.partition(b'base64,')[-1])
+    #      yield (b'--frame\r\n'
+    #             b'Content-Type: image/jpg\r\n\r\n' + img + b'\r\n\r\n')
     for msg in consumer:
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpg\r\n\r\n' + msg.value + b'\r\n\r\n')
+        stripped = msg.value.strip(b'"')
+        if stripped.startswith(b'data:'):
+            img = base64.b64decode(stripped.partition(b'base64,')[-1])
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpg\r\n\r\n' + img + b'\r\n\r\n')
 
+        time.sleep(.3)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', debug=True)
