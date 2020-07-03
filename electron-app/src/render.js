@@ -14,7 +14,7 @@ let topic = 'my-topic';
 const kafka = new Kafka({
   clientId: 'camera-producer',
   brokers: ['bootstrap.devreus:443'],
-  logLevel: logLevel.DEBUG,
+  logLevel: logLevel.ERROR,
   ssl: {
     rejectUnauthorized: true,
     ca: readFileSync(`${dir}/root.pem`, 'utf-8')
@@ -22,7 +22,6 @@ const kafka = new Kafka({
 });
 
 const producer = kafka.producer();
-
 
 // Function to connect to the cluster
 const run = async () => {
@@ -50,8 +49,7 @@ const sendMessage = (msg) => {
         { value: JSON.stringify(msg) },
       ],
     })
-    .then(console.log)
-    .catch(e => console.error(`[example/producer] ${e.message}`, e))
+    .catch(e => console.error(`[sendMessage/producer] ${e.message}`, e))
 }
 
 
@@ -62,10 +60,18 @@ const recordedChunks = [];
 // Buttons
 const videoElement = document.querySelector('video');
 
+var desktopVideoInterval = null;
+var imageCapture = null;
 
 const startBtn = document.getElementById('startBtn');
 startBtn.onclick = e => {
   mediaRecorder.start();
+  // start the producer
+  run().catch(e => console.error(`[example/producer] ${e.message}`, e))
+  desktopVideoInterval = setInterval(() => {
+    console.log("Message sent");
+    captureBitmapFrame(imageCapture)
+  }, 700);
   startBtn.classList.add('is-danger');
   startBtn.innerText = 'Recording';
 };
@@ -73,9 +79,14 @@ startBtn.onclick = e => {
 const stopBtn = document.getElementById('stopBtn');
 
 stopBtn.onclick = e => {
+  clearInterval(desktopVideoInterval);
+  // Stop the producer
+  stop().catch(e => console.error(`[stop/producer] ${e.message}`, e))
   mediaRecorder.stop();
   startBtn.classList.remove('is-danger');
   startBtn.innerText = 'Start';
+  desktopVideoInterval = null;
+  imageCapture = null;
 };
 
 const videoSelectBtn = document.getElementById('videoSelectBtn');
@@ -116,7 +127,6 @@ async function selectSource(source) {
     }
   };
 
-  run().catch(e => console.error(`[example/producer] ${e.message}`, e))
   // Create a Stream
   const stream = await navigator.mediaDevices
     .getUserMedia(constraints);
@@ -132,16 +142,7 @@ async function selectSource(source) {
   mediaRecorder = new MediaRecorder(stream, options);
 
   const desktopTrack = stream.getVideoTracks()[0];
-  let imageCapture = new ImageCapture(desktopTrack);
-
-  setInterval(() => {
-    captureBitmapFrame(imageCapture)
-  }, 700);
-
-  // Register Event Handlers
-  mediaRecorder.ondataavailable = handleDataAvailable;
-  mediaRecorder.onstop = handleStop;
-
+  imageCapture = new ImageCapture(desktopTrack);
   // Updates the UI
 }
 
@@ -172,38 +173,8 @@ function captureBitmapFrame(imageCapture) {
   })
   .then(blob => {
     blobToBase64(blob).then( b64 => sendMessage(b64) );
-    // blob.arrayBuffer().then(buffer => sendMessage(buffer));
   })
   .catch(function(error) {
     console.log('grabFrame() error: ', error);
   });
-}
-
-// Captures all recorded chunks
-function handleDataAvailable(e) {
-  console.log('video data available');
-  // sendMessage("k");
-  // recordedChunks.push(e.data);
-}
-
-// Saves the video file on stop
-async function handleStop(e) {
-  stop().catch(e => console.error(`[example/producer] ${e.message}`, e))
-
-  console.log("Stopped");
-  // const blob = new Blob(recordedChunks, {
-  //   type: 'video/webm; codecs=vp9'
-  // });
-  //
-  // const buffer = Buffer.from(await blob.arrayBuffer());
-  //
-  // const { filePath } = await dialog.showSaveDialog({
-  //   buttonLabel: 'Save video',
-  //   defaultPath: `vid-${Date.now()}.webm`
-  // });
-  //
-  // if (filePath) {
-  //   writeFile(filePath, buffer, () => console.log('video saved successfully!'));
-  // }
-
 }
