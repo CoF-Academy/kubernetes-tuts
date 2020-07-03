@@ -82,7 +82,9 @@ stopBtn.onclick = e => {
   clearInterval(desktopVideoInterval);
   // Stop the producer
   stop().catch(e => console.error(`[stop/producer] ${e.message}`, e))
-  mediaRecorder.stop();
+  if (mediaRecorder.state === 'recording') { 
+    mediaRecorder.stop();
+  }
   startBtn.classList.remove('is-danger');
   startBtn.innerText = 'Start';
   desktopVideoInterval = null;
