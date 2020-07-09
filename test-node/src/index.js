@@ -1,11 +1,12 @@
 const fs = require('fs');
 const { Kafka, logLevel } = require('kafkajs')
+const crypto = require('crypto')
 
 
 const kafka = new Kafka({
   clientId: 'camera-producer',
   brokers: ['bootstrap.devreus:443'],
-  logLevel: logLevel.DEBUG,
+  logLevel: logLevel.ERROR,
   ssl: {
     rejectUnauthorized: true,
     ca: fs.readFileSync('./root.pem', 'utf-8')
@@ -13,19 +14,32 @@ const kafka = new Kafka({
 });
 
 let topic = 'my-topic';
-const producer = kafka.producer()
+
+const MyPartitioner = () => {
+    return ({ topic, partitionMetadata, message }) => {
+      let shasum = crypto.createHash('sha1');
+      shasum.update(message.key);
+      let group = Number(BigInt("0x" + shasum.digest('hex')) % 2n);
+      console.log(group)
+      return group
+    }
+}
+
+const producer = kafka.producer({ createPartitioner: MyPartitioner })
 
 const sendMessage = () => {
   return producer
     .send({
       topic,
       messages: [
-        { value: 'Hello KafkaJS user!' },
+        { key: 'grupo_2',value: 'Sin funciono' },
       ],
     })
     .then(console.log)
     .catch(e => console.error(`[example/producer] ${e.message}`, e))
 }
+
+
 
 const run = async () => {
   await producer.connect()

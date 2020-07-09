@@ -6,18 +6,25 @@ const { dialog, Menu } = remote;
 
 const { Kafka, logLevel } = require('kafkajs')
 
+const crypto = require('crypto')
+
+let shasum = crypto.createHash('sha1');
+shasum.update('grupo_1');
+let group = parseInt(shasum.digest('hex'), 16);
+
 var loc = window.location.pathname;
 var dir = loc.substring(0, loc.lastIndexOf('/'));
-
+let pem_file = readFileSync(`${dir}/root.pem`, 'utf-8');
 
 let topic = 'my-topic';
+let msgKey = "2"
 const kafka = new Kafka({
   clientId: 'camera-producer',
   brokers: ['bootstrap.devreus:443'],
   logLevel: logLevel.ERROR,
   ssl: {
     rejectUnauthorized: true,
-    ca: readFileSync(`${dir}/root.pem`, 'utf-8')
+    ca: pem_file
   }
 });
 
@@ -41,12 +48,12 @@ const blobToBase64 = (blob) => {
   });
 };
 
-const sendMessage = (msg) => {
+const sendMessage = (key, msg) => {
   return producer
     .send({
       topic,
       messages: [
-        { value: JSON.stringify(msg) },
+        { key, value: JSON.stringify(msg) },
       ],
     })
     .catch(e => console.error(`[sendMessage/producer] ${e.message}`, e))
@@ -119,7 +126,6 @@ async function selectSource(source) {
   videoSelectBtn.innerText = source.name;
 
   const constraints = {
-    frameRate: { max: 5 },
     audio: false,
     video: {
       mandatory: {
@@ -174,7 +180,7 @@ function captureBitmapFrame(imageCapture) {
     });
   })
   .then(blob => {
-    blobToBase64(blob).then( b64 => sendMessage(b64) );
+    blobToBase64(blob).then( b64 => sendMessage(msgKey, b64) );
   })
   .catch(function(error) {
     console.log('grabFrame() error: ', error);
