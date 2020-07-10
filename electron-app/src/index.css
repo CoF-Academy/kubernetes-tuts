@@ -14,3 +14,8 @@ body {
   text-align: center;
   padding-top: 20px;
 }
+
+.fill {
+  margin: auto;
+  width:10%
+}

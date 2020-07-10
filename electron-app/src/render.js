@@ -69,7 +69,6 @@ const sendMessage = (key, msg) => {
 
 // Global state
 let mediaRecorder; // MediaRecorder instance to capture footage
-const recordedChunks = [];
 
 // Buttons
 const videoElement = document.querySelector('video');
@@ -84,7 +83,9 @@ startBtn.onclick = e => {
   run().catch(e => console.error(`[example/producer] ${e.message}`, e))
   desktopVideoInterval = setInterval(() => {
     console.log("Message sent");
-    captureBitmapFrame(imageCapture)
+    const groupId = document.getElementById('groupId').value;
+    console.log(groupId);
+    captureBitmapFrame(imageCapture, groupId)
   }, 700);
   startBtn.classList.add('is-danger');
   startBtn.innerText = 'Recording';
@@ -102,7 +103,6 @@ stopBtn.onclick = e => {
   startBtn.classList.remove('is-danger');
   startBtn.innerText = 'Start';
   desktopVideoInterval = null;
-  imageCapture = null;
 };
 
 const videoSelectBtn = document.getElementById('videoSelectBtn');
@@ -162,7 +162,7 @@ async function selectSource(source) {
 }
 
 // Function to capture frame from videostream
-function captureBitmapFrame(imageCapture) {
+function captureBitmapFrame(imageCapture, groupId) {
    imageCapture.grabFrame()
   .then(function(imageBitmap) {
     return new Promise(res => {
@@ -187,7 +187,7 @@ function captureBitmapFrame(imageCapture) {
     });
   })
   .then(blob => {
-    blobToBase64(blob).then( b64 => sendMessage(msgKey, b64) );
+    blobToBase64(blob).then( b64 => sendMessage(groupId, b64) );
   })
   .catch(function(error) {
     console.log('grabFrame() error: ', error);
