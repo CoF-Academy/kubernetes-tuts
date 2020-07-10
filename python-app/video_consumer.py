@@ -4,6 +4,7 @@ from kafka import TopicPartition
 import base64
 import time
 import hashlib
+import sys
 
 
 # Fire up the Kafka Consumer

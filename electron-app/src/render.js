@@ -8,16 +8,23 @@ const { Kafka, logLevel } = require('kafkajs')
 
 const crypto = require('crypto')
 
-let shasum = crypto.createHash('sha1');
-shasum.update('grupo_1');
-let group = parseInt(shasum.digest('hex'), 16);
-
+let msgKey = "grupo_1";
 var loc = window.location.pathname;
 var dir = loc.substring(0, loc.lastIndexOf('/'));
 let pem_file = readFileSync(`${dir}/root.pem`, 'utf-8');
 
 let topic = 'my-topic';
-let msgKey = "2"
+let partitionNumber = 2n;
+
+const MyPartitioner = () => {
+    return ({ topic, partitionMetadata, message }) => {
+      let shasum = crypto.createHash('sha1');
+      shasum.update(message.key);
+      let group = Number(BigInt("0x" + shasum.digest('hex')) % partitionNumber);
+      return group
+    }
+}
+
 const kafka = new Kafka({
   clientId: 'camera-producer',
   brokers: ['bootstrap.devreus:443'],
@@ -28,7 +35,7 @@ const kafka = new Kafka({
   }
 });
 
-const producer = kafka.producer();
+const producer = kafka.producer({ createPartitioner: MyPartitioner })
 
 // Function to connect to the cluster
 const run = async () => {
