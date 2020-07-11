@@ -8,7 +8,6 @@ const { Kafka, logLevel } = require('kafkajs')
 
 const crypto = require('crypto')
 
-let msgKey = "grupo_1";
 var loc = window.location.pathname;
 var dir = loc.substring(0, loc.lastIndexOf('/'));
 let pem_file = readFileSync(`${dir}/root.pem`, 'utf-8');
@@ -16,17 +15,8 @@ let pem_file = readFileSync(`${dir}/root.pem`, 'utf-8');
 let topic = 'my-topic';
 let partitionNumber = 2n;
 
-const MyPartitioner = () => {
-    return ({ topic, partitionMetadata, message }) => {
-      let shasum = crypto.createHash('sha1');
-      shasum.update(message.key);
-      let group = Number(BigInt("0x" + shasum.digest('hex')) % partitionNumber);
-      return group
-    }
-}
-
 const kafka = new Kafka({
-  clientId: 'camera-producer',
+  clientId: 'camera-consumer',
   brokers: ['bootstrap.devreus:443'],
   logLevel: logLevel.ERROR,
   ssl: {
@@ -36,9 +26,19 @@ const kafka = new Kafka({
 });
 
 const producer = kafka.producer({ createPartitioner: MyPartitioner })
+kafka.consumer({ groupId: 'my-group' })
 
 // Function to connect to the cluster
 const run = async () => {
+  await consumer.run({
+    eachMessage: async ({ topic, partition, message }) => {
+        console.log({
+            key: message.key.toString(),
+            value: message.value.toString(),
+            headers: message.headers,
+        })
+    },
+})
   await producer.connect()
 }
 const stop = async () => {
@@ -56,13 +56,11 @@ const blobToBase64 = (blob) => {
 };
 
 const sendMessage = (key, msg) => {
-  let jsonMsg = JSON.stringify(msg)
-  console.log(jsonMsg.length)
   return producer
     .send({
       topic,
       messages: [
-        { key, value: jsonMsg },
+        { key, value: JSON.stringify(msg) },
       ],
     })
     .catch(e => console.error(`[sendMessage/producer] ${e.message}`, e))
@@ -185,7 +183,7 @@ function captureBitmapFrame(imageCapture, groupId) {
         canvas.getContext('2d').drawImage(img,0,0);
       }
       // get it back as a Blob
-      canvas.toBlob(res, "image/jpeg", 0.7);
+      canvas.toBlob(res, "image/jpeg", 0.95);
     });
   })
   .then(blob => {
