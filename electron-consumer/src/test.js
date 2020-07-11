@@ -14,7 +14,6 @@ let groupId = 'grupo_1';
 let digest = BigInt('0x' + crypto.createHash('sha1').update(groupId).digest('hex'));
 
 
-
 const MyPartitionAssigner = ({ cluster }) => ({
       name: 'MyPartitionAssigner',
 

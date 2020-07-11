@@ -4,16 +4,68 @@ const { writeFile, readFileSync } = require('fs');
 
 const { dialog, Menu } = remote;
 
-const { Kafka, logLevel } = require('kafkajs')
+const { Kafka, logLevel, AssignerProtocol: { MemberMetadata, MemberAssignment } } = require('kafkajs')
 
 const crypto = require('crypto')
 
+
 var loc = window.location.pathname;
+// Kafka
 var dir = loc.substring(0, loc.lastIndexOf('/'));
 let pem_file = readFileSync(`${dir}/root.pem`, 'utf-8');
-
 let topic = 'my-topic';
-let partitionNumber = 2n;
+var consumer;
+var groupId = null;
+
+function calculateHash(groupId) {
+  return BigInt('0x' + crypto.createHash('sha1').update(groupId).digest('hex'));
+}
+
+const MyPartitionAssigner = ({ cluster }) => ({
+    name: 'CustomPartitionerAssigner',
+    version: 1,
+    async assign({ members, topics }) {
+        const membersCount = members.length
+        const assignment = {}
+        const sortedMembers = members.map(({ memberId }) => memberId).sort()
+        
+        sortedMembers.forEach(memberId => {
+          assignment[memberId] = {}
+        })
+        
+        // Get partitions of topic
+        const partitionMetadata = cluster.findTopicPartitionMetadata(topic)
+        const partitions = partitionMetadata.map(m => m.partitionId)
+        // Calculate the partition id
+        let digest = calculateHash(groupId);
+        let partitionId = Number(digest % BigInt(partitions.length));
+        sortedMembers.forEach((memberId, i) => {
+          if (!assignment[memberId][topic]) {
+            assignment[memberId][topic] = []
+          }
+          assignment[memberId][topic].push(partitionId)
+        })
+        console.log(assignment);
+        let arr =  Object.keys(assignment).map(memberId => ({
+            memberId,
+            memberAssignment: MemberAssignment.encode({
+                version: this.version,
+                assignment: assignment[memberId],
+            })
+        }));
+      return arr;
+    },
+
+    protocol({ topics }) {
+        return {
+            name: this.name,
+            metadata: MemberMetadata.encode({
+            version: this.version,
+            topics,
+            }),
+        }
+    }
+});
 
 const kafka = new Kafka({
   clientId: 'camera-consumer',
@@ -25,171 +77,48 @@ const kafka = new Kafka({
   }
 });
 
-const producer = kafka.producer({ createPartitioner: MyPartitioner })
-kafka.consumer({ groupId: 'my-group' })
 
-// Function to connect to the cluster
 const run = async () => {
-  await consumer.run({
-    eachMessage: async ({ topic, partition, message }) => {
-        console.log({
-            key: message.key.toString(),
-            value: message.value.toString(),
-            headers: message.headers,
-        })
-    },
-})
-  await producer.connect()
-}
-const stop = async () => {
-  await producer.disconnect()
-}
-
-const blobToBase64 = (blob) => {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(blob);
-    reader.onloadend = function () {
-      resolve(reader.result);
-    };
+    groupId = document.getElementById('groupId').value;
+    consumer = kafka.consumer({
+      groupId,
+      partitionAssigners: [
+          MyPartitionAssigner,
+      ]
   });
-};
-
-const sendMessage = (key, msg) => {
-  return producer
-    .send({
-      topic,
-      messages: [
-        { key, value: JSON.stringify(msg) },
-      ],
-    })
-    .catch(e => console.error(`[sendMessage/producer] ${e.message}`, e))
+  await consumer.connect();
+  await consumer.subscribe({ topic });
+  await consumer.run({
+      eachMessage: async ({ msgTopic, partition, message }) => {
+          console.log({
+              key: message.key.toString(),
+              // value: message.value.toString(),
+          })
+      },
+  })
 }
 
+const stop = async () => {
+  await consumer.disconnect()
+}
 
-// Global state
-let mediaRecorder; // MediaRecorder instance to capture footage
-
-// Buttons
-const videoElement = document.querySelector('video');
-
-var desktopVideoInterval = null;
-var imageCapture = null;
-
+// HTML queries
+const mainDiv = document.getElementsByClassName("main");
 const startBtn = document.getElementById('startBtn');
-startBtn.onclick = e => {
-  mediaRecorder.start();
-  // start the producer
-  run().catch(e => console.error(`[example/producer] ${e.message}`, e))
-  desktopVideoInterval = setInterval(() => {
-    console.log("Message sent");
-    const groupId = document.getElementById('groupId').value;
-    console.log(groupId);
-    captureBitmapFrame(imageCapture, groupId)
-  }, 700);
-  startBtn.classList.add('is-danger');
-  startBtn.innerText = 'Recording';
-};
-
 const stopBtn = document.getElementById('stopBtn');
 
-stopBtn.onclick = e => {
-  clearInterval(desktopVideoInterval);
-  // Stop the producer
-  stop().catch(e => console.error(`[stop/producer] ${e.message}`, e))
-  if (mediaRecorder.state === 'recording') { 
-    mediaRecorder.stop();
-  }
-  startBtn.classList.remove('is-danger');
-  startBtn.innerText = 'Start';
-  desktopVideoInterval = null;
+startBtn.onclick = e => {
+  // start the consumer
+  const groupId = document.getElementById('groupId').value;
+  run().catch(e => console.error(`[stop/consumer] ${e.message}`, e))
+  startBtn.classList.add('is-danger');
+  startBtn.innerText = 'Recieving';
 };
 
-const videoSelectBtn = document.getElementById('videoSelectBtn');
-videoSelectBtn.onclick = getVideoSources;
 
-// Get the available video sources
-async function getVideoSources() {
-  const inputSources = await desktopCapturer.getSources({
-    types: ['window', 'screen']
-  });
-
-  const videoOptionsMenu = Menu.buildFromTemplate(
-    inputSources.map(source => {
-      return {
-        label: source.name,
-        click: () => selectSource(source)
-      };
-    })
-  );
-
-
-  videoOptionsMenu.popup();
-}
-
-// Change the videoSource window to record
-async function selectSource(source) {
-
-  videoSelectBtn.innerText = source.name;
-
-  const constraints = {
-    audio: false,
-    video: {
-      mandatory: {
-        chromeMediaSource: 'desktop',
-        chromeMediaSourceId: source.id
-      }
-    }
-  };
-
-  // Create a Stream
-  const stream = await navigator.mediaDevices
-    .getUserMedia(constraints);
-
-  // Preview the source in a video element
-  videoElement.srcObject = stream;
-
-
-  videoElement.play();
-
-  // Create the Media Recorder
-  const options = { mimeType: 'video/webm; codecs=vp9' };
-  mediaRecorder = new MediaRecorder(stream, options);
-
-  const desktopTrack = stream.getVideoTracks()[0];
-  imageCapture = new ImageCapture(desktopTrack);
-  // Updates the UI
-}
-
-// Function to capture frame from videostream
-function captureBitmapFrame(imageCapture, groupId) {
-   imageCapture.grabFrame()
-  .then(function(imageBitmap) {
-    return new Promise(res => {
-      // create a canvas
-      const canvas = document.createElement('canvas');
-      // resize it to the size of our ImageBitmap
-      canvas.width = imageBitmap.width;
-      canvas.height = imageBitmap.height;
-      // try to get a bitmaprenderer context
-      let ctx = canvas.getContext('bitmaprenderer');
-      if(ctx) {
-        // transfer the ImageBitmap to it
-        ctx.transferFromImageBitmap(imageBitmap);
-      }
-      else {
-        // in case someone supports createImageBitmap only
-        // twice in memory...
-        canvas.getContext('2d').drawImage(img,0,0);
-      }
-      // get it back as a Blob
-      canvas.toBlob(res, "image/jpeg", 0.95);
-    });
-  })
-  .then(blob => {
-    blobToBase64(blob).then( b64 => sendMessage(groupId, b64) );
-  })
-  .catch(function(error) {
-    console.log('grabFrame() error: ', error);
-  });
-}
+stopBtn.onclick = e => {
+  // Stop the producer
+  stop().catch(e => console.error(`[stop/consumer] ${e.message}`, e))
+  startBtn.classList.remove('is-danger');
+  startBtn.innerText = 'Start';
+};

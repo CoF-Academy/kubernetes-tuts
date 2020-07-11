@@ -4,12 +4,6 @@ body {
   margin: 0;
 }
 
-
-video {
-  width: 100%;
-  height: auto;
-}
-
 body {
   text-align: center;
   padding-top: 20px;
@@ -17,5 +11,5 @@ body {
 
 .fill {
   margin: auto;
-  width:10%
+  width: 100px;
 }
