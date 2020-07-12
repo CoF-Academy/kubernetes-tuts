@@ -57,7 +57,7 @@ const blobToBase64 = (blob) => {
 
 const sendMessage = (key, msg) => {
   let jsonMsg = JSON.stringify(msg)
-  console.log(jsonMsg.length)
+  console.log(jsonMsg)
   return producer
     .send({
       topic,

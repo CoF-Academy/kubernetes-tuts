@@ -1,4 +1,4 @@
-const { desktopCapturer, remote } = require('electron');
+const { desktopCapturer, remote, nativeImage } = require('electron');
 
 const { writeFile, readFileSync } = require('fs');
 
@@ -16,6 +16,12 @@ let pem_file = readFileSync(`${dir}/root.pem`, 'utf-8');
 let topic = 'my-topic';
 var consumer;
 var groupId = null;
+var videoSources = {};
+
+// HTML queries
+const mainDiv = document.getElementsByClassName("main")[0];
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
 
 function calculateHash(groupId) {
   return BigInt('0x' + crypto.createHash('sha1').update(groupId).digest('hex'));
@@ -90,6 +96,7 @@ const run = async () => {
   await consumer.subscribe({ topic });
   await consumer.run({
       eachMessage: async ({ msgTopic, partition, message }) => {
+          manageStreams(message);
           console.log({
               key: message.key.toString(),
               // value: message.value.toString(),
@@ -98,14 +105,38 @@ const run = async () => {
   })
 }
 
+function b64ToImage(base64img, msgKey) {
+  var img = document.createElement('img');
+  img.src = nativeImage.createFromDataURL(base64img).toDataURL();
+  mainDiv.appendChild(img);
+  return img;
+}
+
+function trim (s, c) {
+  if (c === "]") c = "\\]";
+  if (c === "\\") c = "\\\\";
+  return s.replace(new RegExp(
+    "^[" + c + "]+|[" + c + "]+$", "g"
+  ), "");
+}
+
+
+//TODO cambiar a soportar varios sources y diferenciarlos por keys
+function manageStreams(msg) {
+  let msgKey = msg.key.toString();
+  let msgValue = trim(msg.value.toString(), '"'); 
+  // Add the key and create a video
+  let img = b64ToImage(msgValue, msgKey);
+  if (!(msgKey in videoSources)) {
+    videoSources[msgKey] = img;
+  }
+}
+
 const stop = async () => {
+  videoSources = {};
   await consumer.disconnect()
 }
 
-// HTML queries
-const mainDiv = document.getElementsByClassName("main");
-const startBtn = document.getElementById('startBtn');
-const stopBtn = document.getElementById('stopBtn');
 
 startBtn.onclick = e => {
   // start the consumer
