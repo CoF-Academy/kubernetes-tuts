@@ -124,12 +124,15 @@ function trim (s, c) {
 //TODO cambiar a soportar varios sources y diferenciarlos por keys
 function manageStreams(msg) {
   let msgKey = msg.key.toString();
-  let msgValue = trim(msg.value.toString(), '"'); 
   // Add the key and create a video
-  let img = b64ToImage(msgValue, msgKey);
   if (!(msgKey in videoSources)) {
+    var img = document.createElement('img');
     videoSources[msgKey] = img;
+    mainDiv.appendChild(img);
   }
+  let msgValue = trim(msg.value.toString(), '"'); 
+  videoSources[msgKey].src = msgValue;
+  // let img = b64ToImage(msgValue, msgKey);
 }
 
 const stop = async () => {
