@@ -96,11 +96,7 @@ const run = async () => {
   await consumer.subscribe({ topic });
   await consumer.run({
       eachMessage: async ({ msgTopic, partition, message }) => {
-          manageStreams(message);
-          console.log({
-              key: message.key.toString(),
-              // value: message.value.toString(),
-          })
+        manageStreams(message);
       },
   })
 }
@@ -120,19 +116,19 @@ function trim (s, c) {
   ), "");
 }
 
-
-//TODO cambiar a soportar varios sources y diferenciarlos por keys
 function manageStreams(msg) {
-  let msgKey = msg.key.toString();
+  let valueObj = JSON.parse(JSON.parse(msg.value.toString()));
+  let userId = valueObj.userId;
+
   // Add the key and create a video
-  if (!(msgKey in videoSources)) {
+  if (!(userId in videoSources)) {
     var img = document.createElement('img');
-    videoSources[msgKey] = img;
+    videoSources[userId] = img;
     mainDiv.appendChild(img);
   }
-  let msgValue = trim(msg.value.toString(), '"'); 
-  videoSources[msgKey].src = msgValue;
-  // let img = b64ToImage(msgValue, msgKey);
+  let msgValue = trim(valueObj.frame, '"'); 
+  videoSources[userId].src = msgValue;
+  console.log(`Message recieved from group ${groupId} and user ${userId}`);
 }
 
 const stop = async () => {

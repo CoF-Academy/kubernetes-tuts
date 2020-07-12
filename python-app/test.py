@@ -1,5 +1,7 @@
 from kafka import KafkaConsumer
 from kafka import TopicPartition
+import json
+import demjson
 import hashlib
 import sys
 
@@ -23,7 +25,8 @@ consumer.assign([TopicPartition(topic, group)])
 
 def get_video_stream():
     for msg in consumer:
-        print(msg)
+        json_msg = demjson.decode(msg.value)
+        print(type(json_msg))
 
 
 if __name__ == "__main__":

@@ -84,10 +84,12 @@ const run = async () => {
   await consumer.subscribe({ topic });
   await consumer.run({
       eachMessage: async ({ msgTopic, partition, message }) => {
-          console.log({
-              key: message.key.toString(),
+        let msgObj = JSON.parse(JSON.parse(message.value.toString()));
+        console.log(msgObj.userId);
+          // console.log({
+              // key: message.key.toString(),
               // value: message.value.toString(),
-          })
+          // })
       },
   })
 }

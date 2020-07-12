@@ -8,12 +8,12 @@ const { Kafka, logLevel } = require('kafkajs')
 
 const crypto = require('crypto')
 
-let msgKey = "grupo_1";
 var loc = window.location.pathname;
 var dir = loc.substring(0, loc.lastIndexOf('/'));
 let pem_file = readFileSync(`${dir}/root.pem`, 'utf-8');
 
 let topic = 'my-topic';
+let userId = null;
 let partitionNumber = 2n;
 
 const MyPartitioner = () => {
@@ -57,7 +57,6 @@ const blobToBase64 = (blob) => {
 
 const sendMessage = (key, msg) => {
   let jsonMsg = JSON.stringify(msg)
-  console.log(jsonMsg)
   return producer
     .send({
       topic,
@@ -80,13 +79,13 @@ var imageCapture = null;
 
 const startBtn = document.getElementById('startBtn');
 startBtn.onclick = e => {
+  userId = document.getElementById('userId').value;
   mediaRecorder.start();
   // start the producer
   run().catch(e => console.error(`[example/producer] ${e.message}`, e))
   desktopVideoInterval = setInterval(() => {
-    console.log("Message sent");
     const groupId = document.getElementById('groupId').value;
-    console.log(groupId);
+    console.log(`Message sent from group ${groupId} and user ${userId}`);
     captureBitmapFrame(imageCapture, groupId)
   }, 700);
   startBtn.classList.add('is-danger');
@@ -97,6 +96,7 @@ const stopBtn = document.getElementById('stopBtn');
 
 stopBtn.onclick = e => {
   clearInterval(desktopVideoInterval);
+  userId = null;
   // Stop the producer
   stop().catch(e => console.error(`[stop/producer] ${e.message}`, e))
   if (mediaRecorder.state === 'recording') { 
@@ -189,7 +189,12 @@ function captureBitmapFrame(imageCapture, groupId) {
     });
   })
   .then(blob => {
-    blobToBase64(blob).then( b64 => sendMessage(groupId, b64) );
+    blobToBase64(blob).then(function (b64) {
+      let message = {};
+      message['userId'] = userId;
+      message['frame'] = b64
+      sendMessage(groupId, JSON.stringify(message));
+    });
   })
   .catch(function(error) {
     console.log('grabFrame() error: ', error);
