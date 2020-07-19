@@ -21,11 +21,20 @@ const startButton = document.getElementById('startButton');
 const callButton = document.getElementById('callButton');
 const hangupButton = document.getElementById('hangupButton');
 
+// Chat components
+var dataChannelSend = document.querySelector('textarea#dataChannelSend');
+var sendButton = document.querySelector('button#sendButton');
+var closeButton = document.querySelector('button#closeButton');
+
 let localStream;
 let remoteStream;
 
 let localPeerConnection;
 let remotePeerConnection;
+
+let chatChannel;
+var receiveChannel;
+
 
 // Sets the mediastream as the video element src
 function handleLocalMediaStream(mediaStream) {
@@ -169,8 +178,29 @@ function startAction() {
   trace('Requesting local stream.');
 }
 
+function onReceiveChannelStateChange() {
+  var readyState = receiveChannel.readyState;
+  trace('Receive channel state is: ' + readyState);
+}
+
+
+function onSendChannelStateChange() {
+  var readyState = chatChannel.readyState;
+  trace('Send channel state is: ' + readyState);
+  if (readyState === 'open') {
+    dataChannelSend.disabled = false;
+    dataChannelSend.focus();
+    sendButton.disabled = false;
+  } else {
+    dataChannelSend.disabled = true;
+    sendButton.disabled = true;
+  }
+}
+
 // Handles call button action: creates peer connection.
 function callAction() {
+  let dataConstraint = null;
+  let pcConstraint = null;
   callButton.disabled = true;
   hangupButton.disabled = false;
 
@@ -190,14 +220,26 @@ function callAction() {
   const servers = null;  // Allows for RTC server configuration.
 
   // Create peer connections and add behavior.
-  localPeerConnection = new RTCPeerConnection(servers);
+  localPeerConnection = new RTCPeerConnection(servers, pcConstraint);
+
+  // Create chat channel
+  chatChannel = localPeerConnection.createDataChannel('sendDataChannel',
+    dataConstraint);
+  chatChannel.onopen = onSendChannelStateChange;
+
+  chatChannel.onopen = onSendChannelStateChange;
+  chatChannel.onclose = onSendChannelStateChange;
+
+
   trace('Created local peer connection object localPeerConnection.');
 
-  localPeerConnection.addEventListener('icecandidate', handleConnection);
-  localPeerConnection.addEventListener(
-    'iceconnectionstatechange', handleConnectionChange);
+  localPeerConnection.onicecandidate =  handleConnection;
+  localPeerConnection.oniceconnectionstatechange = handleConnectionChange;
 
-  remotePeerConnection = new RTCPeerConnection(servers);
+  remotePeerConnection = new RTCPeerConnection(servers, pcConstraint);
+
+  remotePeerConnection.ondatachannel = receiveChannelCallback;
+
   trace('Created remote peer connection object remotePeerConnection.');
 
   remotePeerConnection.addEventListener('icecandidate', handleConnection);
@@ -213,6 +255,21 @@ function callAction() {
   localPeerConnection.createOffer(offerOptions)
     .then(createdOffer).catch(setSessionDescriptionError);
 }
+
+
+function onReceiveMessageCallback(event) {
+  trace('Received Message');
+  dataChannelReceive.value = event.data;
+}
+
+function receiveChannelCallback(event) {
+  trace('Receive Channel Callback');
+  receiveChannel = event.channel;
+  receiveChannel.onmessage = onReceiveMessageCallback;
+  receiveChannel.onopen = onReceiveChannelStateChange;
+  receiveChannel.onclose = onReceiveChannelStateChange;
+}
+
 
 // Handles hangup action: ends up call, closes connections and resets peers.
 function hangupAction() {
