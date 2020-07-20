@@ -26,6 +26,15 @@ var dataChannelSend = document.querySelector('textarea#dataChannelSend');
 var sendButton = document.querySelector('button#sendButton');
 var closeButton = document.querySelector('button#closeButton');
 
+function sendData() {
+  var data = dataChannelSend.value;
+  chatChannel.send(data);
+  trace('Sent Data: ' + data);
+}
+
+sendButton.onclick = sendData;
+
+
 let localStream;
 let remoteStream;
 
@@ -78,9 +87,7 @@ remoteVideo.addEventListener('onresize', handleStreamStart);
 // Connects with new peer candidate.
 function handleConnection(event) {
   const peerConnection = event.target;
-  const iceCandidate = event.candidate;
-
-  if (iceCandidate) {
+  if (event.candidate) {
     const newIceCandidate = new RTCIceCandidate(iceCandidate);
     const otherPeer = getOtherPeer(peerConnection);
 
@@ -207,7 +214,7 @@ function callAction() {
   trace('Starting call.');
   startTime = window.performance.now();
 
-  // Get local media stream tracks.
+  // 1.- Get local media stream tracks.
   const videoTracks = localStream.getVideoTracks();
   const audioTracks = localStream.getAudioTracks();
   if (videoTracks.length > 0) {
@@ -219,7 +226,7 @@ function callAction() {
 
   const servers = null;  // Allows for RTC server configuration.
 
-  // Create peer connections and add behavior.
+  // 2.- Create peer connections and add behavior.
   localPeerConnection = new RTCPeerConnection(servers, pcConstraint);
 
   // Create chat channel
@@ -241,7 +248,8 @@ function callAction() {
   remotePeerConnection.ondatachannel = receiveChannelCallback;
 
   trace('Created remote peer connection object remotePeerConnection.');
-
+ 
+  // 3.- Add ICEHandlers
   remotePeerConnection.addEventListener('icecandidate', handleConnection);
   remotePeerConnection.addEventListener(
     'iceconnectionstatechange', handleConnectionChange);
@@ -252,6 +260,7 @@ function callAction() {
   trace('Added local stream to localPeerConnection.');
 
   trace('localPeerConnection createOffer start.');
+  //4.- Start offer
   localPeerConnection.createOffer(offerOptions)
     .then(createdOffer).catch(setSessionDescriptionError);
 }
