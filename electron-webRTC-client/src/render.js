@@ -4,6 +4,9 @@ const socket = require('socket.io-client')('http://localhost:3000');
 
 var name, connectedUser;
 
+let mediaSource;
+
+
 var loginPage = document.querySelector('#login-page'),
     usernameInput = document.querySelector('#username'),
     loginButton = document.querySelector('#login'),
@@ -19,6 +22,15 @@ videoSelectBtn.onclick = async function getVideoSources() {
     types: ['window', 'screen']
   });
 
+
+  let videoSources = await navigator.mediaDevices.enumerateDevices().then(function (devices) {
+    return devices.filter(device => device.kind === 'videoinput').map(dev => ({id: dev.id, name: dev.label}));
+  });
+
+
+  inputSources.push(...videoSources);
+
+
   const videoOptionsMenu = Menu.buildFromTemplate(
     inputSources.map(source => {
       return {
@@ -30,6 +42,9 @@ videoSelectBtn.onclick = async function getVideoSources() {
   videoOptionsMenu.popup();
 }
 
+async function selectSource(source) {
+  mediaSource = source;
+}
 
 var yourVideo = document.querySelector('#yours'),
     theirVideo = document.querySelector('#theirs'),
@@ -54,7 +69,21 @@ loginButton.addEventListener("click", function (event) {
 
 function startConnection() {
   if (hasUserMedia()) { 
-    let constrains = { video: true, audio: false };
+    let constrains = { audio: false, 
+      video: {
+        deviceId: mediaSource.id
+      }
+    };
+    if (mediaSource.thumbnail) {
+      constrains = { audio: false, 
+        video: {
+          mandatory: {
+            chromeMediaSource: 'desktop',
+            chromeMediaSourceId: mediaSource.id
+          }
+        }
+      };
+    }
     navigator.mediaDevices.getUserMedia(constrains)
       .then(function (myStream) {
       stream = myStream;
