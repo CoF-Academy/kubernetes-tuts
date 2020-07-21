@@ -5,6 +5,7 @@ users = {};
 
 io.on('connection', client => {
   client.on('message', data => {  
+    console.log("Recieved message");
     let jsonBody;
     try {
       jsonBody = JSON.parse(data);
@@ -110,7 +111,7 @@ function disconnect(client) {
 
     if (client.otherName) {
       console.log(`Disconnecting user from ${client.otherName}`);
-      let otherClient = users[connection.otherName];
+      let otherClient = users[client.otherName];
       otherClient.otherName = null;
 
       if (otherClient != null) {
