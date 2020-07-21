@@ -1,4 +1,7 @@
+const { desktopCapturer, remote } = require('electron');
+const { dialog, Menu } = remote;
 const socket = require('socket.io-client')('http://localhost:3000');
+
 var name, connectedUser;
 
 var loginPage = document.querySelector('#login-page'),
@@ -8,6 +11,24 @@ var loginPage = document.querySelector('#login-page'),
     theirUsernameInput = document.querySelector('#their-username'),
     callButton = document.querySelector('#call'),
     hangUpButton = document.querySelector('#hang-up');
+
+const videoSelectBtn = document.getElementById('videoSelectBtn');
+
+videoSelectBtn.onclick = async function getVideoSources() {
+  const inputSources = await desktopCapturer.getSources({
+    types: ['window', 'screen']
+  });
+
+  const videoOptionsMenu = Menu.buildFromTemplate(
+    inputSources.map(source => {
+      return {
+        label: source.name,
+        click: () => selectSource(source)
+      };
+    })
+  );
+  videoOptionsMenu.popup();
+}
 
 
 var yourVideo = document.querySelector('#yours'),
@@ -32,8 +53,10 @@ loginButton.addEventListener("click", function (event) {
 
 
 function startConnection() {
-  if (hasUserMedia()) {
-    navigator.getUserMedia({ video: true, audio: false }, function (myStream) {
+  if (hasUserMedia()) { 
+    let constrains = { video: true, audio: false };
+    navigator.mediaDevices.getUserMedia(constrains)
+      .then(function (myStream) {
       stream = myStream;
       yourVideo.srcObject = stream;
 
@@ -42,13 +65,15 @@ function startConnection() {
       } else {
         alert("Sorry, your browser does not support WebRTC.");
       }
-    }, function (error) {
+    })
+    .catch(function (error) {
       console.log(error);
     });
   } else {
     alert("Sorry, your browser does not support WebRTC.");
   }
 }
+
 
 function setupPeerConnection(stream) {
   var configuration = {
