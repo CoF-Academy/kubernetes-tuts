@@ -124,8 +124,6 @@ async function getVideoSources() {
       };
     })
   );
-
-
   videoOptionsMenu.popup();
 }
 
