@@ -2,18 +2,60 @@ const { desktopCapturer, remote } = require('electron');
 const { dialog, Menu } = remote;
 const socket = require('socket.io-client')('http://localhost:3000');
 
-var name, connectedUser;
-
-let mediaSource;
-
-
 var loginPage = document.querySelector('#login-page'),
     usernameInput = document.querySelector('#username'),
     loginButton = document.querySelector('#login'),
     callPage = document.querySelector('#call-page'),
     theirUsernameInput = document.querySelector('#their-username'),
     callButton = document.querySelector('#call'),
-    hangUpButton = document.querySelector('#hang-up');
+    hangUpButton = document.querySelector('#hang-up'),
+    sendButton = document.querySelector('#send'),
+    messageInput = document.querySelector('#message'),
+    received = document.querySelector('#received');
+
+var name, connectedUser;
+
+let mediaSource;
+
+var yourVideo = document.querySelector('#yours'),
+    theirVideo = document.querySelector('#theirs'),
+    yourConnection, connectedUser, stream;
+
+
+var dataChannel;
+
+
+function onDataChannel() {
+  console.log("On data channel");
+    dataChannel.onerror = function (error) {
+    console.log("Data Channel Error:", error);
+  };
+
+  dataChannel.onmessage = function (event) {
+    console.log("Got Data Channel Message:", event.data);
+
+    received.innerHTML += "recv: " + event.data + "<br />";
+    received.scrollTop = received.scrollHeight;
+  };
+
+  dataChannel.onopen = function () {
+    dataChannel.send(name + " has connected.");
+  };
+
+  dataChannel.onclose = function () {
+    console.log("The Data Channel is Closed");
+  };
+}
+
+
+// Bind our text input and received area
+sendButton.addEventListener("click", function (event) {
+  let val = messageInput.value;
+  received.innerHTML += "send: " + val + "<br />";
+  received.scrollTop = received.scrollHeight;
+  console.log("Chat message sent");
+  dataChannel.send(val);
+});
 
 const videoSelectBtn = document.getElementById('videoSelectBtn');
 
@@ -46,9 +88,6 @@ async function selectSource(source) {
   mediaSource = source;
 }
 
-var yourVideo = document.querySelector('#yours'),
-    theirVideo = document.querySelector('#theirs'),
-    yourConnection, connectedUser, stream;
 
 
 callPage.style.display = "none";
@@ -105,10 +144,11 @@ function startConnection() {
 
 
 function setupPeerConnection(stream) {
+  console.log("Starting peer connection");
   var configuration = {
     "iceServers": [{ "url": "stun:stun.1.google.com:19302" }]
   };
-  yourConnection = new RTCPeerConnection(configuration);
+  yourConnection = new RTCPeerConnection(configuration,  {optional: [{RtpDataChannels: true}]});
 
   // Setup stream listening
   yourConnection.addStream(stream);
@@ -125,7 +165,37 @@ function setupPeerConnection(stream) {
       });
     }
   };
+
+   openDataChannel();
 }
+
+
+function openDataChannel() {
+  var dataChannelOptions = {
+    reliable: true
+  };
+  dataChannel = yourConnection.createDataChannel("myLabel", dataChannelOptions);
+
+  dataChannel.onerror = function (error) {
+    console.log("Data Channel Error:", error);
+  };
+
+  dataChannel.onmessage = function (event) {
+    console.log("Got Data Channel Message:", event.data);
+
+    received.innerHTML += event.data + "<br />";
+    received.scrollTop = received.scrollHeight;
+  };
+
+  dataChannel.onopen = function () {
+    dataChannel.send(name + " has connected.");
+  };
+
+  dataChannel.onclose = function () {
+    console.log("The Data Channel is Closed");
+  };
+}
+
 
 function hasUserMedia() {
   navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
@@ -159,6 +229,25 @@ callButton.addEventListener("click", function () {
     startPeerConnection(theirUsername);
   }
 });
+
+
+hangUpButton.addEventListener("click", function () {
+  send({
+    type: "leave"
+  });
+
+  onLeave();
+});
+
+function onLeave() {
+  connectedUser = null;
+  theirVideo.src = null;
+  yourConnection.close();
+  yourConnection.onicecandidate = null;
+  yourConnection.onaddstream = null;
+  // Set the connection again to change it to open state
+  setupPeerConnection(stream);
+};
 
 function startPeerConnection(user) {
   connectedUser = user;
@@ -204,7 +293,7 @@ socket.on('connect', conn =>  {
 
 
 socket.on('message', message =>  {
-  console.log("Got message", message);
+  console.log("Got message");
   let data = JSON.parse(message);
 
   switch(data.type) {

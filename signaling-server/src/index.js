@@ -98,7 +98,7 @@ function leave(client, data) {
   console.log(`Disconnecting user from ${data.name}`);
   let otherClient = users[data.name];
   otherClient.otherName = null;
-  if (conn != null) {
+  if (client!= null) {
     sendTo(otherClient, {
       type: 'leave'
     });
@@ -112,9 +112,9 @@ function disconnect(client) {
     if (client.otherName) {
       console.log(`Disconnecting user from ${client.otherName}`);
       let otherClient = users[client.otherName];
-      otherClient.otherName = null;
 
       if (otherClient != null) {
+        otherClient.otherName = null;
         sendTo(otherClient, {
           type: 'leave'
         });
