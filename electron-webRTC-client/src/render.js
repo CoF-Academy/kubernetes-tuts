@@ -109,35 +109,19 @@ loginButton.addEventListener("click", function (event) {
 
 function startConnection() {
   if (hasUserMedia()) { 
-    let constrains = { audio: false, 
+    let constrains = { 
+      audio: false, 
       video: {
+        width: { exact: 320 },
+        height: { exact: 240 },
+        frameRate: 20,
         deviceId: mediaSource.id
       }
     };
-    if (mediaSource.thumbnail) {
-      constrains = { 
-        audio: false, 
-        video: {
-          mandatory: {
-            chromeMediaSource: 'desktop',
-            chromeMediaSourceId: mediaSource.id
-          }
-        }
-      };
-    } else {
-      constrains = { 
-        audio: false,
-        video: {
-          width: { exact: 320 },
-          height: { exact: 240 },
-          frameRate: 20
-        }
-      }
-    }
     navigator.mediaDevices.getUserMedia(constrains)
       .then(function (myStream) {
-      let videoTrack = myStream.getVideoTracks()[0];
-      console.log(videoTrack.getSettings());
+      // let videoTrack = myStream.getVideoTracks()[0];
+      // console.log(videoTrack.getSettings());
       stream = myStream;
       yourVideo.srcObject = stream;
 

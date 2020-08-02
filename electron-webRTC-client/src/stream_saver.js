@@ -1,4 +1,7 @@
+const fs = require('fs');
+
 let mediaRecorder;
+let wstream;
 
 module.exports = function (stream) {
   let options = {mimeType: 'video/webm;codecs=vp9,opus'};
@@ -17,6 +20,7 @@ module.exports = function (stream) {
 
   try {
     mediaRecorder = new MediaRecorder(stream, options);
+    wstream = fs.createWriteStream('/tmp/myBinaryFile');
   } catch (e) {
     console.error('Exception while creating MediaRecorder:', e);
     return;
@@ -25,7 +29,6 @@ module.exports = function (stream) {
   console.log('Created MediaRecorder', mediaRecorder, 'with options', options);
   mediaRecorder.onstop = (event) => {
     console.log('Recorder stopped: ', event);
-    console.log('Recorded Blobs: ', recordedBlobs);
   };
   mediaRecorder.ondataavailable = handleDataAvailable;
   mediaRecorder.start(1000);
@@ -34,12 +37,11 @@ module.exports = function (stream) {
 
 function stopRecording() {
   mediaRecorder.stop();
-  mediaRecorder = null;
+  wstream.end();
 }
 
 function handleDataAvailable(event) {
   if (event.data && event.data.size > 0) {
-    console.log('handleDataAvailable', event.data.size);
-    // recordedBlobs.push(event.data);
+    event.data.arrayBuffer().then(buffer => wstream.write(new Buffer(buffer)));
   }
 }
