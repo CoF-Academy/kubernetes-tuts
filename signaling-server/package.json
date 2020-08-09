@@ -8,11 +8,13 @@
     "socket.io": "^2.3.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.4"
+    "nodemon": "^2.0.4",
+    "ts-node-dev": "^1.0.0-pre.56",
+    "typescript": "^3.9.7"
   },
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon --watch src src/index.js"
+    "dev": "tsnd --respawn --transpile-only -- src"
   },
   "repository": {
     "type": "git",
