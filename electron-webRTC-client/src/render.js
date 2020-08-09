@@ -1,6 +1,7 @@
 const { desktopCapturer, remote } = require('electron');
 const { dialog, Menu } = remote;
 const socket = require('socket.io-client')('http://localhost:3000');
+const streamSaver = require('./stream_saver');
 
 var loginPage = document.querySelector('#login-page'),
     usernameInput = document.querySelector('#username'),
@@ -108,25 +109,24 @@ loginButton.addEventListener("click", function (event) {
 
 function startConnection() {
   if (hasUserMedia()) { 
-    let constrains = { audio: false, 
+    let constrains = { 
+      audio: false, 
       video: {
+        width: { exact: 320 },
+        height: { exact: 240 },
+        frameRate: 20,
         deviceId: mediaSource.id
       }
     };
-    if (mediaSource.thumbnail) {
-      constrains = { audio: false, 
-        video: {
-          mandatory: {
-            chromeMediaSource: 'desktop',
-            chromeMediaSourceId: mediaSource.id
-          }
-        }
-      };
-    }
     navigator.mediaDevices.getUserMedia(constrains)
       .then(function (myStream) {
+      // let videoTrack = myStream.getVideoTracks()[0];
+      // console.log(videoTrack.getSettings());
       stream = myStream;
       yourVideo.srcObject = stream;
+
+      // Save stream
+      streamSaver(stream);
 
       if (hasRTCPeerConnection()) {
         setupPeerConnection(stream);
