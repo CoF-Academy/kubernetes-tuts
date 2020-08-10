@@ -28,10 +28,6 @@ class PQ {
     }
   }
 
-  print() {
-    console.log(this.rooms);
-  }
-
   dequeue() {
     const max = this.rooms[0];
     const end = this.rooms.pop() as Room;

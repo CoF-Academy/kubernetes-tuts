@@ -8,18 +8,28 @@
     "socket.io": "^2.3.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.4",
+    "@types/jest": "^26.0.9",
+    "jest": "^26.2.2",
+    "ts-jest": "^26.1.4",
     "ts-node-dev": "^1.0.0-pre.56",
     "typescript": "^3.9.7"
   },
   "scripts": {
     "start": "node src/index.js",
-    "dev": "tsnd --respawn --transpile-only -- src"
+    "dev": "tsnd --respawn --transpile-only -- src",
+    "test": "jest",
+    "coverage": "jest --coverage"
   },
   "repository": {
     "type": "git",
     "url": "no"
   },
-  "author": "",
-  "license": "ISC"
+  "jest": {
+    "verbose": true,
+    "testRegex": "(/test/.*|(\\.|/)(test|spec))\\.[jt]sx?$",
+    "transform": {
+      "^.+\\.ts?$": "ts-jest"
+    },
+    "testEnvironment": "node"
+  }
 }
