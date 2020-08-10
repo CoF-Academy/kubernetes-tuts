@@ -1,4 +1,6 @@
-import { loadbalance } from  '../src/loadbalancer/loadbalancer'
+import { loadbalance, LoadBalancer } from  '../src/loadbalancer/loadbalancer'
+
+// TODO reorganize to use classes instead of closure
 
 let rooms_names = ['group_1', 'group_2', 'group_3'];
 describe("Loadbalance function", () => {
@@ -46,5 +48,16 @@ describe("Loadbalance function", () => {
       expect(error).toBeInstanceOf(Error);
       expect(error).toHaveProperty("message", "All of the rooms are at maximux capacity (30)");
     }
+  });
+
+  test("It should update the correspodent group when we incrementByName", () => {
+    let loadbalancer = new LoadBalancer(rooms_names, 10)
+    for(let i=0; i < 10; i++) {
+      let name = loadbalancer.getGroup();
+      loadbalancer.incrementByName(name);
+    }
+    loadbalancer.printGroups();
+    // loadbalancer.incrementByName("group_1");
+    // loadbalancer.printGroups();
   });
 });

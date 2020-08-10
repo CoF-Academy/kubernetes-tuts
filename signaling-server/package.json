@@ -9,13 +9,14 @@
   },
   "devDependencies": {
     "@types/jest": "^26.0.9",
+    "@types/socket.io": "^2.1.10",
     "jest": "^26.2.2",
     "ts-jest": "^26.1.4",
     "ts-node-dev": "^1.0.0-pre.56",
     "typescript": "^3.9.7"
   },
   "scripts": {
-    "start": "node src/index.js",
+    "build": "leasot -x '**/*.ts'  --ignore node_modules",
     "dev": "tsnd --respawn --transpile-only -- src",
     "test": "jest",
     "coverage": "jest --coverage"

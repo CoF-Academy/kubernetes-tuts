@@ -28,11 +28,7 @@ class PQ {
     }
   }
 
-  dequeue() {
-    const max = this.rooms[0];
-    const end = this.rooms.pop() as Room;
-    this.rooms[0] = end;
-
+  private _reorganize() {
     let index = 0;
     const length = this.rooms.length;
     const current = this.rooms[0];
@@ -60,8 +56,63 @@ class PQ {
       this.rooms[swap] = current;
       index = swap;
     }
+  }
 
+  dequeue() {
+    const max = this.rooms[0];
+    const end = this.rooms.pop() as Room;
+    this.rooms[0] = end;
+    this._reorganize();
     return max;
+  }
+  
+  // TODO check if the capacity doesn't pass max_capacity
+  incrementByName(name: String) {
+    let found = false;
+    for (let i = 0; i < this.rooms.length; i++) {
+      if (this.rooms[i].name === name) {
+        console.log(name);
+        found = true;
+        this.rooms[i].capacity += 1;
+        break;
+      }
+    }
+    if (!found) throw new Error(`Group ${name} was not found`);
+    this._reorganize();
+  }
+}
+
+export class LoadBalancer {
+  private pq: PQ;
+  private roomCapacity: number;
+  constructor(names: Array<String>, capacity: number) {
+    this.roomCapacity = capacity;
+    if (names.length === 0)
+      throw new Error('names array cannot be empty');
+    this.pq = new PQ();
+    for (const name of names) {
+      this.pq.enqueue(name, capacity);
+    }
+  }
+
+  
+
+  printGroups() {
+    console.log(this.pq.rooms); 
+  }
+
+  getGroup() {
+    let room = this.pq.dequeue();
+    if (room.capacity <= 0) {
+      throw new Error(`All of the rooms are at maximux capacity (${this.roomCapacity})`);
+    }
+    room.capacity--;
+    this.pq.enqueue(room.name, room.capacity);
+    return room.name;
+  }
+
+  incrementByName(name: String) {
+    this.pq.incrementByName(name);
   }
 }
 
@@ -84,4 +135,5 @@ export function loadbalance(rooms_names: Array<String>, max_capacity: number) {
     tree.enqueue(room.name, room.capacity);
     return room.name;
   }
+  
 }

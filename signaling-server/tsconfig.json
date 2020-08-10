@@ -5,7 +5,8 @@
     "target": "ES2019",
     "module": "commonjs",
     "outDir": "build",
-    "locale": "es"
+    "locale": "es",
+    "esModuleInterop": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules"]
