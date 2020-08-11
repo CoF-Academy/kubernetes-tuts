@@ -30,7 +30,6 @@ type CandidateData = {
 
 type LeaveData = {
   id: string
-  candidate: object
 }
 
 
