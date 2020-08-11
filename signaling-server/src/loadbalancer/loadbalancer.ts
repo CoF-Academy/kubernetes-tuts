@@ -1,18 +1,20 @@
 class Room {
   name: String;
   capacity: number;
+  max_capacity: number;
 
-  constructor(name: String, capacity: number) {
+  constructor(name: String, capacity: number, max_capacity: number) {
     this.name = name;
     this.capacity = capacity;
+    this.max_capacity = max_capacity;
   }
 }
 
 class PQ {
   rooms: Array<Room> = [];
 
-  enqueue(room_name: String, capacity: number) {
-    this.rooms.push(new Room(room_name, capacity));
+  enqueue(room: Room) {
+    this.rooms.push(room);
     let index = this.rooms.length - 1;
     const current = this.rooms[index];
 
@@ -48,7 +50,7 @@ class PQ {
           (swap === null && rightChild.capacity > current.capacity) ||
           (swap !== null && rightChild.capacity > leftChild.capacity)
         )
-          swap = rightChildIndex;
+        swap = rightChildIndex;
       }
 
       if (swap === null) break;
@@ -66,14 +68,17 @@ class PQ {
     return max;
   }
   
-  // TODO check if the capacity doesn't pass max_capacity
   incrementByName(name: String) {
     let found = false;
     for (let i = 0; i < this.rooms.length; i++) {
-      if (this.rooms[i].name === name) {
-        console.log(name);
+      let current = this.rooms[i];
+      if (current.name === name) {
         found = true;
-        this.rooms[i].capacity += 1;
+        if (current.capacity < current.max_capacity) {
+          current.capacity += 1;
+        } else {
+          throw new Error(`Group ${name} is already at max capacity`);
+        }
         break;
       }
     }
@@ -84,56 +89,30 @@ class PQ {
 
 export class LoadBalancer {
   private pq: PQ;
-  private roomCapacity: number;
   constructor(names: Array<String>, capacity: number) {
-    this.roomCapacity = capacity;
     if (names.length === 0)
-      throw new Error('names array cannot be empty');
+      throw new Error('Names array cannot be empty');
     this.pq = new PQ();
     for (const name of names) {
-      this.pq.enqueue(name, capacity);
+      this.pq.enqueue(new Room(name, capacity, capacity));
     }
   }
 
-  
-
-  printGroups() {
-    console.log(this.pq.rooms); 
+  getAllRoomsCopy() {
+    return Array.of(...this.pq.rooms);
   }
 
   getGroup() {
     let room = this.pq.dequeue();
     if (room.capacity <= 0) {
-      throw new Error(`All of the rooms are at maximux capacity (${this.roomCapacity})`);
+      throw new Error(`All of the rooms are at maximum capacity (${room.max_capacity})`);
     }
     room.capacity--;
-    this.pq.enqueue(room.name, room.capacity);
+    this.pq.enqueue(room);
     return room.name;
   }
 
   incrementByName(name: String) {
     this.pq.incrementByName(name);
   }
-}
-
-export function loadbalance(rooms_names: Array<String>, max_capacity: number) {
-  if (rooms_names.length === 0)
-    throw new Error('First argument cannot be empty');
-
-  // Init priority queue with rooms and capacity
-  const tree = new PQ();
-  for (const name of rooms_names) {
-    tree.enqueue(name, max_capacity);
-  }
-
-  return function () {
-    let room = tree.dequeue();
-    if (room.capacity <= 0) {
-      throw new Error(`All of the rooms are at maximux capacity (${max_capacity})`);
-    }
-    room.capacity--;
-    tree.enqueue(room.name, room.capacity);
-    return room.name;
-  }
-  
 }
